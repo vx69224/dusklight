@@ -53,14 +53,43 @@ def sun_aligned_time(request):
             date = datetime.now().date()
         city = LocationInfo(name="Custom", region="Custom", timezone="UTC", latitude=latitude, longitude=longitude)
         s = sun(city.observer, date=date, tzinfo="UTC")
-        # ... (rest of your logic)
-        return JsonResponse({'result': 'stub'})
+        sunset_time = s['sunset']
+        from datetime import timedelta
+        matches = []
+        for minutes in range(-60, 61):
+            t = sunset_time + timedelta(minutes=minutes)
+            sun_az = azimuth(city.observer, t)
+            diff = abs((sun_az - bearing + 180) % 360 - 180)  # shortest angle diff
+            if diff <= threshold:
+                matches.append(t.strftime('%H:%M'))
+        return JsonResponse({'times': matches, 'bearing': bearing, 'threshold': threshold})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+@csrf_exempt
 def sun_altitude(request):
-    return JsonResponse({'result': 'stub'})
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        from astral import LocationInfo
+        from astral.sun import sun, azimuth, elevation
+    except ImportError:
+        return JsonResponse({'error': 'Astral not installed'}, status=500)
+    try:
+        data = json.loads(request.body)
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        date_str = data.get('date')
+        time_str = data.get('time')
+        if not date_str or not time_str:
+            return JsonResponse({'error': 'date and time required'}, status=400)
+        from datetime import datetime
+        dt = datetime.strptime(date_str + ' ' + time_str, '%Y-%m-%d %H:%M')
+        city = LocationInfo(name="Custom", region="Custom", timezone="UTC", latitude=latitude, longitude=longitude)
+        alt = elevation(city.observer, dt)
+        return JsonResponse({'altitude': alt})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 def dusklight_map(request):
     return render(request, 'dusklight_map.html')
-
