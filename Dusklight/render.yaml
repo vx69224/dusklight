@@ -3,7 +3,7 @@ services:
     name: dusklight
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn backend.wsgi
+    startCommand: PYTHONPATH=backend gunicorn backend.wsgi
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: backend.settings
@@ -15,4 +15,3 @@ services:
         value: False
       - key: DJANGO_ALLOWED_HOSTS
         value: .onrender.com
-
