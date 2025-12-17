@@ -3,7 +3,7 @@ services:
     name: dusklight
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: PYTHONPATH=backend gunicorn backend.wsgi
+    startCommand: gunicorn backend.wsgi
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: backend.settings
