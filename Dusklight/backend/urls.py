@@ -22,7 +22,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/sunset-azimuth/', views.sunset_azimuth, name='sunset_azimuth'),
     path('api/sun-aligned-time/', views.sun_aligned_time, name='sun_aligned_time'),
+    path('api/sun-aligned-time-batch/', views.sun_aligned_time_batch, name='sun_aligned_time_batch'),
     path('api/sun-altitude/', views.sun_altitude, name='sun_altitude'),
+    path('api/sun-altitude-batch/', views.sun_altitude_batch, name='sun_altitude_batch'),
     path('', views.dusklight_map, name='dusklight_map'),
 ]
-

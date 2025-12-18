@@ -91,5 +91,80 @@ def sun_altitude(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+@csrf_exempt
+def sun_altitude_batch(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        from astral import LocationInfo
+        from astral.sun import elevation
+    except ImportError:
+        return JsonResponse({'error': 'Astral not installed'}, status=500)
+    try:
+        data = json.loads(request.body)
+        items = data.get('items', [])
+        results = []
+        for item in items:
+            try:
+                latitude = float(item['latitude'])
+                longitude = float(item['longitude'])
+                date_str = item.get('date')
+                time_str = item.get('time')
+                if not date_str or not time_str:
+                    results.append({'error': 'date and time required'})
+                    continue
+                from datetime import datetime
+                dt = datetime.strptime(date_str + ' ' + time_str, '%Y-%m-%d %H:%M')
+                city = LocationInfo(name="Custom", region="Custom", timezone="UTC", latitude=latitude, longitude=longitude)
+                alt = elevation(city.observer, dt)
+                results.append({'altitude': alt})
+            except Exception as e:
+                results.append({'error': str(e)})
+        return JsonResponse({'results': results})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def sun_aligned_time_batch(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        from astral import LocationInfo
+        from astral.sun import sun, azimuth
+    except ImportError:
+        return JsonResponse({'error': 'Astral not installed'}, status=500)
+    try:
+        data = json.loads(request.body)
+        items = data.get('items', [])
+        results = []
+        for item in items:
+            try:
+                latitude = float(item['latitude'])
+                longitude = float(item['longitude'])
+                bearing = float(item['bearing'])
+                threshold = float(item.get('threshold', 2))
+                date_str = item.get('date')
+                if date_str:
+                    date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                else:
+                    date = datetime.now().date()
+                city = LocationInfo(name="Custom", region="Custom", timezone="UTC", latitude=latitude, longitude=longitude)
+                s = sun(city.observer, date=date, tzinfo="UTC")
+                sunset_time = s['sunset']
+                from datetime import timedelta
+                matches = []
+                for minutes in range(-60, 61):
+                    t = sunset_time + timedelta(minutes=minutes)
+                    sun_az = azimuth(city.observer, t)
+                    diff = abs((sun_az - bearing + 180) % 360 - 180)
+                    if diff <= threshold:
+                        matches.append(t.strftime('%H:%M'))
+                results.append({'times': matches, 'bearing': bearing, 'threshold': threshold})
+            except Exception as e:
+                results.append({'error': str(e)})
+        return JsonResponse({'results': results})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
 def dusklight_map(request):
     return render(request, 'dusklight_map.html')
