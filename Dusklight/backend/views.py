@@ -4,6 +4,12 @@ from django.shortcuts import render
 from datetime import datetime
 import json
 
+VALID_EVENTS = {'sunset', 'sunrise'}
+
+def _normalize_event(value):
+    event = (value or 'sunset').lower()
+    return event if event in VALID_EVENTS else 'sunset'
+
 @csrf_exempt
 def sunset_azimuth(request):
     if request.method != 'POST':

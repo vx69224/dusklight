@@ -137,7 +137,13 @@
                 <option value="-90,90">Any</option>
             </select>
         </label>
-        <button type="submit">Show Sunset Streets</button>
+        <label>Sun event:
+            <select id="sun-event">
+                <option value="sunset" selected>Sunset</option>
+                <option value="sunrise">Sunrise</option>
+            </select>
+        </label>
+        <button type="submit">Show Streets</button>
     </form>
     <div id="map"></div>
     <div id="sunset-time-info"></div>
@@ -182,6 +188,7 @@
     // Show sunset time for selected date and map center
     async function showSunsetTime() {
         const date = document.getElementById('date').value;
+        const selectedEvent = document.getElementById('sun-event').value;
         const center = map.getCenter();
         let infoDiv = document.getElementById('sunset-time-info');
         infoDiv.textContent = 'Loading sunset time...';
@@ -189,7 +196,8 @@
             const resp = await axiosPostWithRetry('/api/sunset-azimuth/', {
                 latitude: center.lat,
                 longitude: center.lng,
-                date: date
+                date: date,
+                event: selectedEvent
             });
             if (resp.data && resp.data.sunset) {
                 // Convert UTC sunset time to local time
@@ -198,7 +206,7 @@
                 const [h, m] = utcTime.split(":");
                 const dateObj = new Date(date + 'T' + h.padStart(2, '0') + ':' + m.padStart(2, '0') + ':00Z');
                 const localTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                infoDiv.textContent = `Sunset at this location: ${localTime} (your local time)`;
+                infoDiv.textContent = `${selectedEvent === 'sunrise' ? 'Sunrise' : 'Sunset'} at this location: ${localTime} (your local time)`;
             } else if (resp.data && resp.data.error) {
                 infoDiv.textContent = 'Error: ' + resp.data.error;
             } else {
@@ -233,12 +241,13 @@
     // Helper to fetch and highlight streets
     async function highlightSunsetStreets(lat, lng, date) {
         // Show loading overlay
+        const selectedEvent = document.getElementById('sun-event').value;
         abortHighlight.cancel = false;
         document.getElementById('loading-overlay').style.display = 'flex';
         // Get sunset azimuth from backend
         let azimuth = null;
         try {
-            const resp = await axiosPostWithRetry('/api/sunset-azimuth/', { latitude: lat, longitude: lng, date: date });
+            const resp = await axiosPostWithRetry('/api/sunset-azimuth/', { latitude: lat, longitude: lng, date: date, event: selectedEvent });
             azimuth = resp.data.azimuth;
         } catch (e) {
             alert('Error fetching sunset azimuth');
@@ -321,7 +330,8 @@
                         latitude: (p1.lat + p2.lat) / 2,
                         longitude: (p1.lon + p2.lon) / 2,
                         date: date,
-                        bearing: bearingNorm
+                        bearing: bearingNorm,
+                        event: selectedEvent
                     });
                     segmentData.push({ p1, p2, bearingNorm });
                 }
@@ -365,7 +375,7 @@
                 const date = document.getElementById('date').value;
                 let sunsetAz = null;
                 try {
-                    const resp = await axios.post('/api/sunset-azimuth/', { latitude: midLat, longitude: midLon, date: date });
+                    const resp = await axios.post('/api/sunset-azimuth/', { latitude: midLat, longitude: midLon, date: date, event: selectedEvent });
                     sunsetAz = resp.data.azimuth;
                 } catch (e) {
                     sunsetAz = bearingNorm;
@@ -392,6 +402,12 @@
         showSunsetTime();
     });
     document.getElementById('sun-altitude-filter').addEventListener('change', function() {
+        const date = document.getElementById('date').value;
+        const center = map.getCenter();
+        highlightSunsetStreets(center.lat, center.lng, date);
+    });
+    document.getElementById('sun-event').addEventListener('change', function() {
+        showSunsetTime();
         const date = document.getElementById('date').value;
         const center = map.getCenter();
         highlightSunsetStreets(center.lat, center.lng, date);

@@ -4,6 +4,12 @@ from django.shortcuts import render
 from datetime import datetime
 import json
 
+VALID_EVENTS = {'sunset', 'sunrise'}
+
+def _normalize_event(value):
+    event = (value or 'sunset').lower()
+    return event if event in VALID_EVENTS else 'sunset'
+
 @csrf_exempt
 def sunset_azimuth(request):
     if request.method != 'POST':
@@ -17,6 +23,7 @@ def sunset_azimuth(request):
         data = json.loads(request.body)
         latitude = float(data['latitude'])
         longitude = float(data['longitude'])
+        event = _normalize_event(data.get('event'))
         date_str = data.get('date')
         if date_str:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -24,10 +31,10 @@ def sunset_azimuth(request):
             date = datetime.now().date()
         city = LocationInfo(name="Custom", region="Custom", timezone="UTC", latitude=latitude, longitude=longitude)
         s = sun(city.observer, date=date, tzinfo="UTC")
-        sunset_time = s['sunset']
-        sunset_az = azimuth(city.observer, sunset_time)
-        sunset_time_str = sunset_time.strftime('%H:%M') if sunset_time else None
-        return JsonResponse({'azimuth': sunset_az, 'sunset': sunset_time_str})
+        target_time = s[event]
+        target_az = azimuth(city.observer, target_time)
+        target_time_str = target_time.strftime('%H:%M') if target_time else None
+        return JsonResponse({'azimuth': target_az, 'time': target_time_str})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -54,10 +61,14 @@ def sun_aligned_time(request):
         city = LocationInfo(name="Custom", region="Custom", timezone="UTC", latitude=latitude, longitude=longitude)
         s = sun(city.observer, date=date, tzinfo="UTC")
         sunset_time = s['sunset']
+        if event == 'sunrise':
+            window_start = s['sunrise']
+        else:
+            window_start = s['sunset']
         from datetime import timedelta
         matches = []
         for minutes in range(-60, 61):
-            t = sunset_time + timedelta(minutes=minutes)
+            t = window_start + timedelta(minutes=minutes)
             sun_az = azimuth(city.observer, t)
             diff = abs((sun_az - bearing + 180) % 360 - 180)  # shortest angle diff
             if diff <= threshold:
@@ -144,6 +155,7 @@ def sun_aligned_time_batch(request):
                 bearing = float(item['bearing'])
                 threshold = float(item.get('threshold', 2))
                 date_str = item.get('date')
+                event = _normalize_event(item.get('event'))
                 if date_str:
                     date = datetime.strptime(date_str, '%Y-%m-%d').date()
                 else:
@@ -151,10 +163,11 @@ def sun_aligned_time_batch(request):
                 city = LocationInfo(name="Custom", region="Custom", timezone="UTC", latitude=latitude, longitude=longitude)
                 s = sun(city.observer, date=date, tzinfo="UTC")
                 sunset_time = s['sunset']
+                window_start = s[event]
                 from datetime import timedelta
                 matches = []
                 for minutes in range(-60, 61):
-                    t = sunset_time + timedelta(minutes=minutes)
+                    t = window_start + timedelta(minutes=minutes)
                     sun_az = azimuth(city.observer, t)
                     diff = abs((sun_az - bearing + 180) % 360 - 180)
                     if diff <= threshold:
