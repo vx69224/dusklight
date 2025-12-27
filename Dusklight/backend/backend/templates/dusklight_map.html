@@ -185,8 +185,36 @@
             var dd = String(today.getDate()).padStart(2, '0');
             dateInput.value = yyyy + '-' + mm + '-' + dd;
         }
-        // Show sunset time for today at map center
-        showSunsetTime();
+        // Try to get user location first and only then request sunset time.
+        // Use a short timeout fallback so we don't wait forever for user permission.
+        var locationResolved = false;
+        if (navigator.geolocation) {
+            var geoTimeout = setTimeout(function() {
+                if (!locationResolved) {
+                    // fallback: use current map center
+                    showSunsetTime();
+                    locationResolved = true;
+                }
+            }, 1200); // 1.2s fallback
+
+            navigator.geolocation.getCurrentPosition(function(position) {
+                locationResolved = true;
+                clearTimeout(geoTimeout);
+                var userLat = position.coords.latitude;
+                var userLng = position.coords.longitude;
+                map.setView([userLat, userLng], 15);
+                // rely on the global map.on('moveend', ...) handler to call showSunsetTime
+                // (avoids duplicate calls)
+            }, function(err) {
+                locationResolved = true;
+                clearTimeout(geoTimeout);
+                // permission denied or error — just show for default center
+                showSunsetTime();
+            }, { timeout: 3000 });
+        } else {
+            // no geolocation support
+            showSunsetTime();
+        }
     });
 
     // Show sunset time for selected date and map center
@@ -235,13 +263,11 @@
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Try to focus map on user location
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            var userLat = position.coords.latitude;
-            var userLng = position.coords.longitude;
-            map.setView([userLat, userLng], 15);
-        });
+    // Debounce timer for moveend to avoid duplicate/early API calls
+    var _sunsetMoveTimer = null;
+    function scheduleShowSunsetTime(delay = 150) {
+        if (_sunsetMoveTimer) clearTimeout(_sunsetMoveTimer);
+        _sunsetMoveTimer = setTimeout(showSunsetTime, delay);
     }
 
     var streetLayers = [];
@@ -422,7 +448,8 @@
         highlightSunsetStreets(center.lat, center.lng, date);
     });
     map.on('moveend', function() {
-        showSunsetTime();
+        // schedule update after map movement settles
+        scheduleShowSunsetTime(150);
     });
     document.getElementById('cancel-loading').onclick = function() {
         abortHighlight.cancel = true;
