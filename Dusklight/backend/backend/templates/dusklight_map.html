@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Golden Hour Photo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body {
             background: linear-gradient(120deg, #232526 0%, #414345 100%);
@@ -127,34 +127,38 @@
     </style>
 </head>
 <body>
-    <form id="sunset-form">
-        <label>Date: <input type="date" id="date"></label>
-        <label>Sun degree above horizon:
-            <select id="sun-altitude-filter">
-                <option value="-2,2">Near horizon (-2° to 2°)</option>
-                <option value="2,10">Low (2° to 10°)</option>
-                <option value="10,90">High (&gt;10°)</option>
-                <option value="-90,90">Any</option>
-            </select>
-        </label>
-        <label>Sun event:
-            <select id="sun-event">
-                <option value="sunset" selected>Sunset</option>
-                <option value="sunrise">Sunrise</option>
-            </select>
-        </label>
-        <button type="submit">Show Streets</button>
-    </form>
-    <div id="map"></div>
-    <div id="sunset-time-info"></div>
-    <div id="alignment-info"></div>
-    <div id="loading-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(30,30,40,0.7);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
-        <div class="loader"></div>
-        <button id="cancel-loading" style="margin-top:2em;padding:0.7em 2em;font-size:1.1em;border-radius:8px;border:none;background:#ffb347;color:#232526;font-weight:bold;cursor:pointer;">Cancel</button>
-    </div>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <script>
+<form id="sunset-form">
+    <label>Date: <input type="date" id="date"></label>
+    <label>Sun degree above horizon:
+        <select id="sun-altitude-filter">
+            <option value="-2,2">Near horizon (-2° to 2°)</option>
+            <option value="2,10">Low (2° to 10°)</option>
+            <option value="10,90">High (&gt;10°)</option>
+            <option value="-90,90">Any</option>
+        </select>
+    </label>
+    <label>Sun event:
+        <select id="sun-event">
+            <option value="sunset" selected>Sunset</option>
+            <option value="sunrise">Sunrise</option>
+        </select>
+    </label>
+    <button type="submit">Show Streets</button>
+</form>
+<div id="map"></div>
+<div id="sunset-time-info"></div>
+<div id="alignment-info"></div>
+<div id="loading-overlay"
+     style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(30,30,40,0.7);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
+    <div class="loader"></div>
+    <button id="cancel-loading"
+            style="margin-top:2em;padding:0.7em 2em;font-size:1.1em;border-radius:8px;border:none;background:#ffb347;color:#232526;font-weight:bold;cursor:pointer;">
+        Cancel
+    </button>
+</div>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
     // Helper: retry axios POST request up to 3 times
     async function axiosPostWithRetry(url, data, maxRetries = 3, delay = 500) {
         let lastError;
@@ -199,6 +203,11 @@
                 date: date,
                 event: selectedEvent
             });
+
+            // Print response data to Chrome console
+            console.log('sunset API response data:', resp.data);
+            console.log('sunset API response data.sunset:', resp.data.sunset);
+
             if (resp.data && resp.data.sunset) {
                 // Convert UTC sunset time to local time
                 const utcTime = resp.data.sunset;
@@ -419,6 +428,6 @@
         abortHighlight.cancel = true;
         document.getElementById('loading-overlay').style.display = 'none';
     };
-    </script>
+</script>
 </body>
 </html>

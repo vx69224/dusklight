@@ -34,7 +34,9 @@ def sunset_azimuth(request):
         target_time = s[event]
         target_az = azimuth(city.observer, target_time)
         target_time_str = target_time.strftime('%H:%M') if target_time else None
-        return JsonResponse({'azimuth': target_az, 'time': target_time_str})
+        # Return both a generic 'time' and a specific key matching the event name
+        response = {'azimuth': target_az, 'time': target_time_str, event: target_time_str}
+        return JsonResponse(response)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -54,6 +56,7 @@ def sun_aligned_time(request):
         bearing = float(data['bearing'])
         threshold = float(data.get('threshold', 2))  # degrees
         date_str = data.get('date')
+        event = _normalize_event(data.get('event'))
         if date_str:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
         else:
